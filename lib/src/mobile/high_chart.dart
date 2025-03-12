@@ -103,7 +103,7 @@ class HighCharts extends StatefulWidget {
   ///
   final List<String> scripts;
 
-  final Function(String value)? onClickEvent;
+  final Function(dynamic value)? onClickEvent;
 
   @override
   HighChartsState createState() => HighChartsState();

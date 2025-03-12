@@ -98,7 +98,7 @@ class HighCharts extends StatefulWidget {
   final List<String> scripts;
 
   /// Callback when a watch is selected
-  final void Function(String value)? onClickEvent;
+  final void Function(dynamic value)? onClickEvent;
 
   @override
   HighChartsState createState() => HighChartsState();
