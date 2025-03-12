@@ -17,7 +17,7 @@ class HighCharts extends StatefulWidget {
       required this.size,
       this.loader = const Center(child: CircularProgressIndicator()),
       this.scripts = const [],
-      this.onWatchSelected, // Callback for watch selection
+      this.onClickEvent,
       super.key});
 
   ///Custom `loader` widget, until script is loaded
@@ -103,8 +103,7 @@ class HighCharts extends StatefulWidget {
   ///
   final List<String> scripts;
 
-  /// Callback when a watch is selected
-  final void Function(String watchId)? onWatchSelected;
+  final Function(String)? onClickEvent;
 
   @override
   HighChartsState createState() => HighChartsState();
@@ -124,15 +123,6 @@ class HighChartsState extends State<HighCharts> {
     _controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..enableZoom(false)
-      ..addJavaScriptChannel(
-        "FlutterChannel",
-        onMessageReceived: _handleJavaScriptMessage,
-      )
-      ..addJavaScriptChannel(
-        "FlutterConsole",
-        onMessageReceived:
-            _handleConsoleMessage, // Capture console logs & errors
-      )
       ..setNavigationDelegate(
         NavigationDelegate(onWebResourceError: (WebResourceError error) {
           debugPrint('Highcharts WebView Error: ${error.description}');
@@ -144,6 +134,16 @@ class HighChartsState extends State<HighCharts> {
         'FlutterHighchartsChannel',
         onMessageReceived: (JavaScriptMessage message) {
           debugPrint('Highcharts Error: ${message.message}');
+        },
+      )
+      ..addJavaScriptChannel(
+        'ClickEventChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          final Map<String, dynamic> data = jsonDecode(message.message);
+
+          if (widget.onPointClick != null) {
+            widget.onPointClick!(data['watchId']);
+          }
         },
       )
       ..setOnConsoleMessage(
@@ -158,57 +158,18 @@ class HighChartsState extends State<HighCharts> {
     }
   }
 
-  void _handleConsoleMessage(JavaScriptMessage message) {
-    try {
-      final data = jsonDecode(message.message);
-      if (data['type'] == 'console_error') {
-        print("🔥 JavaScript ERROR: ${data['message']}");
-      } else if (data['type'] == 'console_log') {
-        print("📋 JavaScript LOG: ${data['message']}");
-      } else if (data['type'] == 'error') {
-        print(
-            "🚨 JavaScript Exception: ${data['message']} (Source: ${data['source']} Line: ${data['line']} Column: ${data['column']})");
-        if (data['error'] != null) {
-          print("📝 Stack Trace: ${data['error']}");
-        }
-      }
-    } catch (e) {
-      print("⚠️ Error parsing JavaScript message: $e");
-    }
-  }
-
   /// Injects JavaScript handler to listen for HighCharts click events
-  Future<void> _injectJavaScriptHandler() async {
-    await _controller.runJavaScript("""
-    window.onerror = function(message, source, lineno, colno, error) {
-      var errorMsg = JSON.stringify({
-        type: "error",
-        message: message,
-        source: source,
-        line: lineno,
-        column: colno,
-        error: error ? error.stack : "No stack trace"
-      });
-
-      console.error("🔥 Full JavaScript Error:", errorMsg);
-      
-      if (window.FlutterConsole) {
-        FlutterConsole.postMessage(errorMsg);
-      }
-    };
-
-    console.log("✅ JavaScript Error Logging Activated.");
-  """);
-  }
-
-  /// Handles messages from WebView (HighCharts click events)
-  void _handleJavaScriptMessage(JavaScriptMessage message) {
-    final data = jsonDecode(message.message);
-    final watchId = data['watchId'];
-
-    if (widget.onWatchSelected != null) {
-      widget.onWatchSelected!(watchId); // Invoke callback with watchId
-    }
+  void injectFlutterBridge() {
+    _controller.runJavaScript('''
+      window.sendDataToFlutter = function(data) {
+        try {
+          var jsonData = JSON.stringify(data);
+          ClickEventChannel.postMessage(jsonData);
+        } catch (error) {
+          console.error("🔥 Error sending data to Flutter:", error);
+        }
+      };
+    ''');
   }
 
   @override
@@ -286,7 +247,7 @@ class HighChartsState extends State<HighCharts> {
       setState(() {
         _isLoaded = true;
       });
-      await _injectJavaScriptHandler();
+      injectFlutterBridge();
       _controller.runJavaScriptReturningResult(
           "senthilnasa(`Highcharts.chart('highChartsDiv',${widget.data} )`);");
     }
