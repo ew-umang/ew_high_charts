@@ -17,6 +17,7 @@ class HighCharts extends StatefulWidget {
       required this.size,
       this.loader = const Center(child: CircularProgressIndicator()),
       this.scripts = const [],
+      this.onWatchSelected, // Callback for watch selection
       super.key});
 
   ///Custom `loader` widget, until script is loaded
@@ -101,6 +102,10 @@ class HighCharts extends StatefulWidget {
   ///```
   ///
   final List<String> scripts;
+
+  /// Callback when a watch is selected
+  final void Function(String watchId)? onWatchSelected;
+
   @override
   HighChartsState createState() => HighChartsState();
 }
@@ -199,19 +204,11 @@ class HighChartsState extends State<HighCharts> {
   /// Handles messages from WebView (HighCharts click events)
   void _handleJavaScriptMessage(JavaScriptMessage message) {
     final data = jsonDecode(message.message);
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Watch Details"),
-        content: Text(
-          "ID: ${data['watchId']}",
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: Text("OK")),
-        ],
-      ),
-    );
+    final watchId = data['watchId'];
+
+    if (widget.onWatchSelected != null) {
+      widget.onWatchSelected!(watchId); // Invoke callback with watchId
+    }
   }
 
   @override

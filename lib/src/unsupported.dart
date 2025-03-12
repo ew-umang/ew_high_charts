@@ -11,6 +11,7 @@ class HighCharts extends StatefulWidget {
       required this.size,
       this.loader = const CircularProgressIndicator(),
       this.scripts = const [],
+      this.onWatchSelected, // Callback for watch selection
       super.key});
 
   ///Custom `loader` widget, until script is loaded
@@ -95,6 +96,10 @@ class HighCharts extends StatefulWidget {
   ///```
   ///
   final List<String> scripts;
+
+  /// Callback when a watch is selected
+  final void Function(String watchId)? onWatchSelected;
+
   @override
   HighChartsState createState() => HighChartsState();
 
