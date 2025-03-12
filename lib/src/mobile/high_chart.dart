@@ -103,7 +103,7 @@ class HighCharts extends StatefulWidget {
   ///
   final List<String> scripts;
 
-  final Function(String)? onClickEvent;
+  final Function(String value)? onClickEvent;
 
   @override
   HighChartsState createState() => HighChartsState();
@@ -141,8 +141,8 @@ class HighChartsState extends State<HighCharts> {
         onMessageReceived: (JavaScriptMessage message) {
           final Map<String, dynamic> data = jsonDecode(message.message);
 
-          if (widget.onPointClick != null) {
-            widget.onPointClick!(data['watchId']);
+          if (widget.onClickEvent != null) {
+            widget.onClickEvent!(data['watchId']);
           }
         },
       )
